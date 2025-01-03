@@ -1,35 +1,34 @@
-
 import os
+import preprocessing
 from gensim import corpora
-# Import libraries
 from gensim import corpora
-from gensim.models import LdaMulticore, HdpModel, LsiModel
-from gensim.parsing.preprocessing import (
-    preprocess_string,
-    strip_punctuation,
-    strip_numeric,
-    remove_stopwords,
-    strip_short,
-    stem_text,
-)
+from gensim.models import LdaModel, HdpModel, LsiModel
 
-filename = "example-texts"
-
-
-filters = [
-    strip_punctuation,  # Remove punctuation
-    strip_numeric,  # Remove numbers
-    remove_stopwords,  # Remove stopwords
-    strip_short,  # Remove words shorter than 3 characters
-]
+interactive = int(os.environ.get("INTERACTIVE", "0")) == 1
 
 files = os.listdir("texts")
-# TODO use first 50 
-files = files[:50]
+# files = files[:50]
+
+english = False
 
 dictionary = corpora.Dictionary()
 print("loading dictionary")
-dictionary = dictionary.load('dictionary.dict')
+dictionary = dictionary.load("dictionary.dict")
+dictionary.filter_extremes(
+    no_below=int(
+        input("no below (20): ")
+        if interactive
+        else os.getenv("DICT_NO_BELOW", 20)
+    ),
+    no_above=(
+        float(
+            input("no above (0.5): ")
+            if interactive
+            else os.getenv("DICT_NO_ABOVE", 0.5)
+        )
+    ),
+)
+print(dictionary.token2id)
 print("done")
 
 
@@ -40,18 +39,12 @@ class FolderCorpus:
     def __iter__(self):
         for i in range(len(files)):
             with open(os.path.join("texts", files[i])) as file:
-                lines = ' '.join(file.readlines())
-                tokens = preprocess_string(lines, filters)
-                # Apply stemming to each token
-                stemmed_tokens = [stem_text(token) for token in tokens]
-                # print(stemmed_tokens, "stemmed")
-                yield dictionary.doc2bow(stemmed_tokens)
-
+                lines = " ".join(file.readlines())
+                tokens = preprocessing.stringToTokens(lines, english)
+                yield dictionary.doc2bow(tokens)
 
 
 c = FolderCorpus()
-
-
 
 
 # Enable logging to monitor progress
@@ -59,7 +52,6 @@ c = FolderCorpus()
 #     format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
 # )
 # warnings.filterwarnings("ignore", category=DeprecationWarning)
-
 
 
 # Create a dictionary and corpus
@@ -84,7 +76,29 @@ def lda_topic_modeling(corpus, dictionary, num_topics=10):
     #     alpha="auto",
     #     per_word_topics=True,
     # )
-    lda_model = LdaMulticore(corpus, id2word=dictionary, num_topics=num_topics, passes=10)
+    lda_model = LdaModel(
+        corpus=corpus,
+        id2word=dictionary,
+        chunksize=(
+            int(
+                input("chunksize(2000): ")
+                if interactive
+                else os.getenv("LDA_CHUNKSIZE", 2000)
+            )
+        ),
+        alpha="auto",
+        eta="auto",
+        iterations=(
+            int(
+                input("iterations(50): ")
+                if interactive
+                else os.getenv("LDA_ITERATIONS", 50)
+            )
+        ),
+        num_topics=num_topics,
+        passes=int(input("passes(20): ") if interactive else os.getenv("LDA_PASSES", 20)),
+        eval_every=None,
+    )
     return lda_model
 
 
@@ -109,14 +123,14 @@ def model():
     global lda_model
     global lsi_model
     num_topics = int(input("enter num topics: "))
-    print('modeling lda')
+    print("modeling lda")
     lda_model = lda_topic_modeling(c, dictionary, num_topics)
-    lda_model.save('lda.model')
-    
-    print('modeling lsi')
+    lda_model.save("lda.model")
+
+    print("modeling lsi")
     # hdp_model = hdp_topic_modeling(c2, dictionary)
     lsi_model = lsi_topic_modeling(c, dictionary, num_topics)
-    lsi_model.save('lsi.model')
+    lsi_model.save("lsi.model")
 
     for i, model in enumerate([lda_model, lsi_model]):
         print(f"model {i}")
@@ -126,12 +140,10 @@ def model():
             print(f"Topic {idx}: {topic}\n")
 
         print("in sample test:")
-        textFile = open(filename)
-        for _, a in enumerate(c):
-            print(textFile.readline())
-            print(model[a], "\n")
+        for j, a in enumerate(c):
+            print(j, files[j], model[a])
 
-        input('next?')
+        input("next?")
 
 
 model()
