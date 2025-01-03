@@ -1,6 +1,6 @@
 import os
+from corpus import FolderCorpus
 import preprocessing
-from gensim import corpora
 from gensim import corpora
 from gensim.models import LdaModel, HdpModel, LsiModel
 
@@ -16,9 +16,7 @@ print("loading dictionary")
 dictionary = dictionary.load("dictionary.dict")
 dictionary.filter_extremes(
     no_below=int(
-        input("no below (20): ")
-        if interactive
-        else os.getenv("DICT_NO_BELOW", 20)
+        input("no below (20): ") if interactive else os.getenv("DICT_NO_BELOW", 20)
     ),
     no_above=(
         float(
@@ -32,19 +30,7 @@ print(dictionary.token2id)
 print("done")
 
 
-class FolderCorpus:
-    def __init__(self) -> None:
-        pass
-
-    def __iter__(self):
-        for i in range(len(files)):
-            with open(os.path.join("texts", files[i])) as file:
-                lines = " ".join(file.readlines())
-                tokens = preprocessing.stringToTokens(lines, english)
-                yield dictionary.doc2bow(tokens)
-
-
-c = FolderCorpus()
+c = FolderCorpus(dictionary)
 
 
 # Enable logging to monitor progress
@@ -96,7 +82,9 @@ def lda_topic_modeling(corpus, dictionary, num_topics=10):
             )
         ),
         num_topics=num_topics,
-        passes=int(input("passes(20): ") if interactive else os.getenv("LDA_PASSES", 20)),
+        passes=int(
+            input("passes(20): ") if interactive else os.getenv("LDA_PASSES", 20)
+        ),
         eval_every=None,
     )
     return lda_model
