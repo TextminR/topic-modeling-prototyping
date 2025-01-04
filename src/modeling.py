@@ -3,46 +3,28 @@ from corpus import FolderCorpus
 import preprocessing
 from gensim import corpora
 from gensim.models import LdaModel, HdpModel, LsiModel
+import logging
+import warnings
+from dotenv import load_dotenv
+
+load_dotenv()
 
 interactive = int(os.environ.get("INTERACTIVE", "0")) == 1
 
-files = os.listdir("texts")
-# files = files[:50]
-
 english = False
 
-dictionary = corpora.Dictionary()
-print("loading dictionary")
-dictionary = dictionary.load("dictionary.dict")
-dictionary.filter_extremes(
-    no_below=int(
-        input("no below (20): ") if interactive else os.getenv("DICT_NO_BELOW", 20)
-    ),
-    no_above=(
-        float(
-            input("no above (0.5): ")
-            if interactive
-            else os.getenv("DICT_NO_ABOVE", 0.5)
-        )
-    ),
+dictionary = corpora.Dictionary.load(
+    input("dictionary: ") if interactive else os.getenv("DICT_FILENAME", "")
 )
-print(dictionary.token2id)
-print("done")
-
 
 c = FolderCorpus(dictionary)
 
 
 # Enable logging to monitor progress
-# logging.basicConfig(
-#     format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
-# )
-# warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-
-# Create a dictionary and corpus
-# dictionary.filter_extremes(no_below=0, no_above=0.5, keep_n=10000)
-# corpus = [dictionary.doc2bow(doc) for doc in processed_docs]
+logging.basicConfig(
+    format="%(asctime)s : %(levelname)s : %(message)s", level=logging.INFO
+)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 lda_model = None
@@ -110,28 +92,40 @@ num_topics = 50
 def model():
     global lda_model
     global lsi_model
-    num_topics = int(input("enter num topics: "))
+    # hdp_model = hdp_topic_modeling(c, dictionary)
+    # hdp_model.save("hdp.model")
+    num_topics = int(
+        input("enter num topics: ") if interactive else os.getenv("NUM_TOPICS", 0)
+    )
     print("modeling lda")
     lda_model = lda_topic_modeling(c, dictionary, num_topics)
-    lda_model.save("lda.model")
+    lda_model.save(
+        input("save lda to: ")
+        if interactive
+        else os.getenv("LDA_FILENAME", "lda.model")
+    )
 
     print("modeling lsi")
     # hdp_model = hdp_topic_modeling(c2, dictionary)
     lsi_model = lsi_topic_modeling(c, dictionary, num_topics)
-    lsi_model.save("lsi.model")
-
-    for i, model in enumerate([lda_model, lsi_model]):
-        print(f"model {i}")
-        print("topics")
-
-        for idx, topic in model.print_topics(-1):
-            print(f"Topic {idx}: {topic}\n")
-
-        print("in sample test:")
-        for j, a in enumerate(c):
-            print(j, files[j], model[a])
-
-        input("next?")
+    lsi_model.save(
+        input("save lsi to: ")
+        if interactive
+        else os.getenv("LSI_FILENAME", "lsi.model")
+    )
+    #
+    # for i, model in enumerate([lda_model, lsi_model]):
+    #     print(f"model {i}")
+    #     print("topics")
+    #
+    #     for idx, topic in model.print_topics(-1):
+    #         print(f"Topic {idx}: {topic}\n")
+    #
+    #     print("in sample test:")
+    #     for j, a in enumerate(c):
+    #         print(j, files[j], model[a])
+    #
+    #     input("next?")
 
 
 model()
