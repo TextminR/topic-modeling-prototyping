@@ -8,18 +8,20 @@ from gensim.parsing.preprocessing import (
     stem_text,
     strip_tags,
     strip_multiple_whitespaces,
+    strip_non_alphanum
 )
 from tqdm import tqdm
 from nltk.stem.snowball import SnowballStemmer
 import nltk
 
 filters = [
-    strip_punctuation,  # Remove punctuation
+    strip_multiple_whitespaces,
+    # strip_punctuation,  # Remove punctuation
+    strip_non_alphanum,
     strip_numeric,  # Remove numbers
     remove_stopwords,  # Remove stopwords
-    strip_short,  # Remove words shorter than 3 characters
     strip_tags,
-    strip_multiple_whitespaces,
+    strip_short,  # Remove words shorter than 3 characters
 ]
 nltk.download("stopwords")
 germanStopwords = nltk.corpus.stopwords.words("german")
